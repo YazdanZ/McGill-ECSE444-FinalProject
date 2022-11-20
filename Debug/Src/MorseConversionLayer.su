@@ -1,0 +1,3 @@
+../Src/MorseConversionLayer.c:15:5:findIndexByElement	40	static
+../Src/MorseConversionLayer.c:38:6:convertMorseToText	40	static
+../Src/MorseConversionLayer.c:60:6:convertTextToMorse	40	static
