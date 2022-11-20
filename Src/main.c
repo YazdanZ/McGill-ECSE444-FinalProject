@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -41,7 +42,11 @@
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c2;
 
+TIM_HandleTypeDef htim2;
+
 UART_HandleTypeDef huart1;
+DMA_HandleTypeDef hdma_usart1_rx;
+DMA_HandleTypeDef hdma_usart1_tx;
 
 /* USER CODE BEGIN PV */
 
@@ -50,14 +55,21 @@ UART_HandleTypeDef huart1;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_I2C2_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+uint8_t buff[1000];
+uint8_t rxData[4];
+uint8_t UART2_rxBuffer[1] = {0};
+int flag = 0;
 
 /* USER CODE END 0 */
 
@@ -68,6 +80,7 @@ static void MX_USART1_UART_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+	char Message[] = "Write anything on Serial Terminal\r\n";
 
   /* USER CODE END 1 */
 
@@ -89,9 +102,17 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_I2C2_Init();
   MX_USART1_UART_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
+
+//  HAL_UART_Receive_DMA (&huart1, rxData, 4);
+//  flag = 1;
+
+  HAL_UART_Transmit(&huart1, (uint8_t *)Message, strlen(Message), 10);
+  HAL_UART_Receive_IT(&huart1, UART2_rxBuffer, 1);
 
   /* USER CODE END 2 */
 
@@ -99,6 +120,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -205,6 +227,51 @@ static void MX_I2C2_Init(void)
 }
 
 /**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 0;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 4294967295;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -253,6 +320,26 @@ static void MX_USART1_UART_Init(void)
 }
 
 /**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMAMUX1_CLK_ENABLE();
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+  /* DMA1_Channel2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -264,7 +351,6 @@ static void MX_GPIO_Init(void)
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
@@ -282,9 +368,62 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LED_GPIO_Port, &GPIO_InitStruct);
 
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_GPIO_EXTI_Callback (uint16_t GPIO_Pin) {
+    if(HAL_GPIO_ReadPin(GPIOB, LED_Pin) == GPIO_PIN_SET) {
+		HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_RESET);
+    } else {
+		HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
+	}
+    sprintf(buff, "Board\n\r");
+    HAL_UART_Transmit_DMA(&huart1, &buff, strlen(buff));
+    //HAL_Delay(100);
+    //HAL_UART_Receive_IT(&huart1,&buff,1);
+    //HAL_UART_DMAStop (&huart1);
+    //HAL_UART_DMAPause (&huart2);
+    //HAL_UART_DMAResume (&huart2);
+
+
+    //HAL_UART_Receive_IT (&huart1, rxData, 4);  // WAS THERE
+    int j = 0;
+
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+//	flag = 0;
+//	uint8_t temp[4];
+//	for(int i = 0; i < strlen(rxData); i++) {
+//		temp[i] = rxData[i];
+//	}
+//	HAL_UART_Transmit_DMA(&huart1, temp, 4);
+//	//HAL_Delay(100);
+//	if(flag == 0){
+//	    //HAL_UART_DMAPause (&huart2);
+//	    //HAL_UART_DMAResume (&huart2);
+//		//HAL_UART_Receive_IT (&huart1, rxData, 4);
+//		flag = 1;
+//	}
+//
+////	for(int i = 0; i < strlen(temp); i++) {
+////		temp[i] = 0;
+////	}
+//
+//	int i = 0;
+
+
+	HAL_UART_Transmit(&huart1, UART2_rxBuffer, 1, 100);
+	HAL_UART_Receive_IT(&huart1, UART2_rxBuffer, 1);
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
+	HAL_UART_Receive_DMA (&huart1, rxData, 4);
+}
 
 /* USER CODE END 4 */
 
