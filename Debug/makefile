@@ -34,34 +34,34 @@ $(wildcard ../makefile.init) \
 $(wildcard ../makefile.targets) \
 
 
-BUILD_ARTIFACT_NAME := final-project-444-new-board
+BUILD_ARTIFACT_NAME := FinalProject
 BUILD_ARTIFACT_EXTENSION := elf
 BUILD_ARTIFACT_PREFIX :=
 BUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME)$(if $(BUILD_ARTIFACT_EXTENSION),.$(BUILD_ARTIFACT_EXTENSION),)
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXECUTABLES += \
-final-project-444-new-board.elf \
+FinalProject.elf \
 
 MAP_FILES += \
-final-project-444-new-board.map \
+FinalProject.map \
 
 SIZE_OUTPUT += \
 default.size.stdout \
 
 OBJDUMP_LIST += \
-final-project-444-new-board.list \
+FinalProject.list \
 
 
 # All Target
 all: main-build
 
 # Main-build Target
-main-build: final-project-444-new-board.elf secondary-outputs
+main-build: FinalProject.elf secondary-outputs
 
 # Tool invocations
-final-project-444-new-board.elf final-project-444-new-board.map: $(OBJS) $(USER_OBJS) C:\Users\David\Documents\STM32\final-project-444-new-board\STM32L4S5VITX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "final-project-444-new-board.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\David\Documents\STM32\final-project-444-new-board\STM32L4S5VITX_FLASH.ld" --specs=nosys.specs -Wl,-Map="final-project-444-new-board.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+FinalProject.elf FinalProject.map: $(OBJS) $(USER_OBJS) C:\Users\HimelSaha\Documents\STM\FinalProject\FinalProject\STM32L4S5VITX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "FinalProject.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\HimelSaha\Documents\STM\FinalProject\FinalProject\STM32L4S5VITX_FLASH.ld" --specs=nosys.specs -Wl,-Map="FinalProject.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -70,14 +70,14 @@ default.size.stdout: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
 	@echo 'Finished building: $@'
 	@echo ' '
 
-final-project-444-new-board.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "final-project-444-new-board.list"
+FinalProject.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "FinalProject.list"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) default.size.stdout final-project-444-new-board.elf final-project-444-new-board.list final-project-444-new-board.map
+	-$(RM) FinalProject.elf FinalProject.list FinalProject.map default.size.stdout
 	-@echo ' '
 
 secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)
