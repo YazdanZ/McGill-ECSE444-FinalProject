@@ -21,12 +21,17 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "vl53l0x_api.h"
+#include "vl53l0x_platform.h"
+#include "MorseConversionLayer.h"
 
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+#define WAITTIME 1
+#define THRES_DISTANCE 100
+#define DURATION_THRES 8
 
 /* USER CODE END PTD */
 
@@ -49,7 +54,18 @@ DMA_HandleTypeDef hdma_usart1_rx;
 DMA_HandleTypeDef hdma_usart1_tx;
 
 /* USER CODE BEGIN PV */
-
+char output[50] = {0};
+VL53L0X_Dev_t MyDevice;
+VL53L0X_Dev_t* pMyDevice = &MyDevice;
+VL53L0X_Error status;
+uint8_t VhvSettings = 0;
+uint8_t PhaseCal = 0;
+uint32_t refSpadCount;
+uint8_t isApertureSpads;
+VL53L0X_RangingMeasurementData_t rangeData;
+VL53L0X_RangingMeasurementData_t* pRangeData = &rangeData;
+uint16_t distance_output = 8190;
+char morse[6];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -111,8 +127,24 @@ int main(void)
 //  HAL_UART_Receive_DMA (&huart1, rxData, 4);
 //  flag = 1;
 
-  HAL_UART_Transmit(&huart1, (uint8_t *)Message, strlen(Message), 10);
+  //HAL_UART_Transmit(&huart1, (uint8_t *)Message, strlen(Message), 10);
   HAL_UART_Receive_IT(&huart1, UART2_rxBuffer, 1);
+
+  //********************************************
+  pMyDevice->I2cHandle = &hi2c2;
+  pMyDevice->I2cDevAddr      = 0x52;
+  pMyDevice->comms_type      =  1;
+  pMyDevice->comms_speed_khz =  400;
+  VL53L0X_ResetDevice(&MyDevice);
+  status = VL53L0X_DataInit(&MyDevice);
+  status = VL53L0X_StaticInit(pMyDevice);
+  status = VL53L0X_PerformRefCalibration(pMyDevice,
+          		&VhvSettings, &PhaseCal);
+  status = VL53L0X_PerformRefSpadManagement(pMyDevice,
+          		&refSpadCount, &isApertureSpads);
+  status = VL53L0X_SetDeviceMode(pMyDevice, VL53L0X_DEVICEMODE_SINGLE_RANGING);
+  char ascii_char[2]; // null-terminated string of length 1.
+  //********************************************
 
   /* USER CODE END 2 */
 
@@ -124,6 +156,37 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  char* array[1];
+	  read_char_morse();
+	  array[0] = morse;
+	  convertMorseToText(array, ascii_char, 1);
+	  ascii_char[1]='\0';
+	  snprintf(output, sizeof(output), "%s\n\r", ascii_char);
+	  HAL_UART_Transmit(&huart1, output, strlen(output), 100);
+	  snprintf(output, sizeof(output), "%s\n\r", morse);
+	  HAL_UART_Transmit(&huart1, output, strlen(output), 100);
+
+	  int i = 0;
+
+
+	  //	  status = VL53L0X_PerformSingleRangingMeasurement(pMyDevice, &rangeData);
+	  //	  distance_output = pRangeData->RangeMilliMeter;
+	  //	  if (distance_output>THRES_DISTANCE && mode==1)
+	  //	  {
+	  //		  mode = 0;
+	  //	  snprintf(output, sizeof(output), "time: %d\n", counter);
+	  //	  HAL_UART_Transmit(&huart1, output, strlen(output), 100);
+	  //		  counter = 0;
+	  //	  } else  if (distance_output<THRES_DISTANCE && mode==0) {
+	  //		  counter++;
+	  //
+	  //		  mode = 1;
+	  //	  } else if (distance_output<THRES_DISTANCE) {
+	  //		  counter++;
+	  //	  }
+	  //	  //snprintf(output, sizeof(output), "Distance: %d\n", distance_output);
+	  //
+	  //	  HAL_Delay(WAITTIME);
   }
   /* USER CODE END 3 */
 }
@@ -355,11 +418,11 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : BLUE_Pin */
-  GPIO_InitStruct.Pin = BLUE_Pin;
+  /*Configure GPIO pin : BLUEBUTTON_Pin */
+  GPIO_InitStruct.Pin = BLUEBUTTON_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(BLUE_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(BLUEBUTTON_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LED_Pin */
   GPIO_InitStruct.Pin = LED_Pin;
@@ -375,6 +438,52 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+//*******************************************************
+void print_error(VL53L0X_Error status) {
+    char buffer[VL53L0X_MAX_STRING_LENGTH];
+    VL53L0X_GetPalErrorString(status, buffer);
+    printf("API Status: %i : %s\n", status, buffer);
+}
+
+void read_char_morse() // reads a single ascii character (multiple morse codes)
+{
+	int mode = 0; // 0=not started reading. 1=reading(waiting for hand to leave sensor). 2=waiting for additional morse code
+	int i = 0;
+	int counter = 0;
+	while(1)
+	{
+		  status = VL53L0X_PerformSingleRangingMeasurement(pMyDevice, &rangeData);
+		  distance_output = pRangeData->RangeMilliMeter;
+		  if (distance_output>THRES_DISTANCE)
+		  {
+			  if (mode==1){
+				  mode = 2;
+				  morse[i] = (counter>=DURATION_THRES) ? '-' : '.';
+				  i++;
+				  counter = 0;
+			  } else if (mode==2){
+				  counter++;
+				  if (counter>14){
+					  morse[i]='\0';
+					  break;
+				  }
+			  }
+
+
+		  } else  if (distance_output<THRES_DISTANCE && (mode==0||mode==2)) {
+			  counter++;
+			  mode = 1;
+		  } else if (distance_output<THRES_DISTANCE && mode==1) {
+			  counter++;
+		  }
+		  HAL_Delay(WAITTIME);
+	}
+
+
+
+}
+//*******************************************************
+
 void HAL_GPIO_EXTI_Callback (uint16_t GPIO_Pin) {
     if(HAL_GPIO_ReadPin(GPIOB, LED_Pin) == GPIO_PIN_SET) {
 		HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_RESET);
@@ -383,46 +492,20 @@ void HAL_GPIO_EXTI_Callback (uint16_t GPIO_Pin) {
 	}
     sprintf(buff, "Board\n\r");
     HAL_UART_Transmit_DMA(&huart1, &buff, strlen(buff));
-    //HAL_Delay(100);
-    //HAL_UART_Receive_IT(&huart1,&buff,1);
-    //HAL_UART_DMAStop (&huart1);
-    //HAL_UART_DMAPause (&huart2);
-    //HAL_UART_DMAResume (&huart2);
-
-
-    //HAL_UART_Receive_IT (&huart1, rxData, 4);  // WAS THERE
-    int j = 0;
-
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-//	flag = 0;
-//	uint8_t temp[4];
-//	for(int i = 0; i < strlen(rxData); i++) {
-//		temp[i] = rxData[i];
-//	}
-//	HAL_UART_Transmit_DMA(&huart1, temp, 4);
-//	//HAL_Delay(100);
-//	if(flag == 0){
-//	    //HAL_UART_DMAPause (&huart2);
-//	    //HAL_UART_DMAResume (&huart2);
-//		//HAL_UART_Receive_IT (&huart1, rxData, 4);
-//		flag = 1;
-//	}
-//
-////	for(int i = 0; i < strlen(temp); i++) {
-////		temp[i] = 0;
-////	}
-//
-//	int i = 0;
-
-
 	HAL_UART_Transmit(&huart1, UART2_rxBuffer, 1, 100);
+	char* character[1];
+	//array[0] = morse;
+	//convertMorseToText(array, ascii_char, 1);
+	convertTextToMorse(UART2_rxBuffer, character, 1);
+	HAL_UART_Transmit(&huart1, character, strlen(character), 100);
 	HAL_UART_Receive_IT(&huart1, UART2_rxBuffer, 1);
 }
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
-	HAL_UART_Receive_DMA (&huart1, rxData, 4);
+	//HAL_UART_Receive_DMA (&huart1, rxData, 4);
 }
 
 /* USER CODE END 4 */
