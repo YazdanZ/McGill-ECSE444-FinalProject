@@ -85,36 +85,36 @@ void convertTextToMorse(char *cArr, char **buff, int size)
         buff[i] = morse;
     }
 }
-
-int main(void)
-{
-    printf("Morse code conversion program: \n");
-
-    /*Translate text to morse code*/
-    char textArr[5] = {'H', 'E', 'L', 'L', 'O'};
-    int textArrSize = (sizeof textArr / sizeof textArr[0]);
-    char *buffer[textArrSize];
-    convertTextToMorse(textArr, buffer, textArrSize);
-    printf("\n\n\nText: %s", textArr);
-    printf("\nText to Morse: ");
-    for (int i = 0; i < 5; i++)
-        printf("%s ", buffer[i]);
-
-    /*Translate morse code to text*/
-    char *morseArr[5] = {"....", ".", ".-..", ".-..", "---"};
-    int morseArrSize = (sizeof morseArr / sizeof morseArr[0]);
-    char buffer2[morseArrSize];
-    convertMorseToText(morseArr, buffer2, morseArrSize);
-    printf("\n\n\nMorse: ");
-    for (int i = 0; i < morseArrSize; i++)
-        printf("%s ", morseArr[i]);
-
-
-    printf("\nMorse to Text: ");
-    printf("%s ", buffer2);
-
-    /*Fin*/
-    printf("\n\n\ndone!s");
-
-    return 0;
-}
+//
+//int main(void)
+//{
+//    printf("Morse code conversion program: \n");
+//
+//    /*Translate text to morse code*/
+//    char textArr[5] = {'H', 'E', 'L', 'L', 'O'};
+//    int textArrSize = (sizeof textArr / sizeof textArr[0]);
+//    char *buffer[textArrSize];
+//    convertTextToMorse(textArr, buffer, textArrSize);
+//    printf("\n\n\nText: %s", textArr);
+//    printf("\nText to Morse: ");
+//    for (int i = 0; i < 5; i++)
+//        printf("%s ", buffer[i]);
+//
+//    /*Translate morse code to text*/
+//    char *morseArr[5] = {"....", ".", ".-..", ".-..", "---"};
+//    int morseArrSize = (sizeof morseArr / sizeof morseArr[0]);
+//    char buffer2[morseArrSize];
+//    convertMorseToText(morseArr, buffer2, morseArrSize);
+//    printf("\n\n\nMorse: ");
+//    for (int i = 0; i < morseArrSize; i++)
+//        printf("%s ", morseArr[i]);
+//
+//
+//    printf("\nMorse to Text: ");
+//    printf("%s ", buffer2);
+//
+//    /*Fin*/
+//    printf("\n\n\ndone!s");
+//
+//    return 0;
+//}

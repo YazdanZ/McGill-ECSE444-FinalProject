@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -46,8 +47,14 @@
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c2;
 
-UART_HandleTypeDef huart1;
+TIM_HandleTypeDef htim2;
 
+UART_HandleTypeDef huart1;
+DMA_HandleTypeDef hdma_usart1_rx;
+DMA_HandleTypeDef hdma_usart1_tx;
+
+osThreadId receiveTerminalHandle;
+osThreadId sideTaskHandle;
 /* USER CODE BEGIN PV */
 char output[50] = {0};
 VL53L0X_Dev_t MyDevice;
@@ -60,14 +67,24 @@ uint8_t isApertureSpads;
 VL53L0X_RangingMeasurementData_t rangeData;
 VL53L0X_RangingMeasurementData_t* pRangeData = &rangeData;
 uint16_t distance_output = 8190;
+
 char morse[6];
+char morseBuffer[6];
+char* dummy[1];
+char* i;
+int interruptFlag = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_I2C2_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_TIM2_Init(void);
+void StartReceivingTerminal(void const * argument);
+void StartSideTask(void const * argument);
+
 /* USER CODE BEGIN PFP */
 void print_error(VL53L0X_Error status);
 void print_to_terminal(char* output);
@@ -75,6 +92,10 @@ void print_to_terminal(char* output);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+uint8_t buff[1000];
+uint8_t rxData[4];
+uint8_t UART2_rxBuffer[1] = {0};
+int flag = 0;
 
 /* USER CODE END 0 */
 
@@ -106,8 +127,10 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_I2C2_Init();
   MX_USART1_UART_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   pMyDevice->I2cHandle = &hi2c2;
   pMyDevice->I2cDevAddr      = 0x52;
@@ -123,8 +146,45 @@ int main(void)
   status = VL53L0X_SetDeviceMode(pMyDevice, VL53L0X_DEVICEMODE_SINGLE_RANGING);
   char ascii_char[2]; // null-terminated string of length 1.
 
+  HAL_UART_Receive_IT(&huart1, UART2_rxBuffer, 1);
+
+
+
   /* USER CODE END 2 */
 
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* definition and creation of receiveTerminal */
+  osThreadDef(receiveTerminal, StartReceivingTerminal, osPriorityNormal, 0, 128);
+  receiveTerminalHandle = osThreadCreate(osThread(receiveTerminal), NULL);
+
+  /* definition and creation of sideTask */
+  osThreadDef(sideTask, StartSideTask, osPriorityNormal, 0, 128);
+  sideTaskHandle = osThreadCreate(osThread(sideTask), NULL);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+  /* USER CODE END RTOS_THREADS */
+
+  /* Start scheduler */
+  osKernelStart();
+
+  /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
@@ -137,9 +197,9 @@ int main(void)
 	array[0] = morse;
 	convertMorseToText(array, ascii_char, 1);
 	ascii_char[1]='\0';
-	snprintf(output, sizeof(output), "%s\n", ascii_char);
+	snprintf(output, sizeof(output), "%s\n\r", ascii_char);
 	HAL_UART_Transmit(&huart1, output, strlen(output), 100);
-	snprintf(output, sizeof(output), "%s\n", morse);
+	snprintf(output, sizeof(output), "%s\n\r", morse);
 	HAL_UART_Transmit(&huart1, output, strlen(output), 100);
 
 
@@ -265,6 +325,51 @@ static void MX_I2C2_Init(void)
 }
 
 /**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 0;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 4294967295;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -313,6 +418,26 @@ static void MX_USART1_UART_Init(void)
 }
 
 /**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMAMUX1_CLK_ENABLE();
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+  /* DMA1_Channel2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -325,11 +450,25 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
+
   /*Configure GPIO pin : BLUEBUTTON_Pin */
   GPIO_InitStruct.Pin = BLUEBUTTON_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(BLUEBUTTON_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : LED_Pin */
+  GPIO_InitStruct.Pin = LED_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(LED_GPIO_Port, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 }
 
@@ -377,7 +516,108 @@ void read_char_morse() // reads a single ascii character (multiple morse codes)
 
 
 }
+
+
+void HAL_GPIO_EXTI_Callback (uint16_t GPIO_Pin) {
+    if(HAL_GPIO_ReadPin(GPIOB, LED_Pin) == GPIO_PIN_SET) {
+		HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_RESET);
+    } else {
+		HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
+	}
+    sprintf(buff, "Board\n\r");
+    HAL_UART_Transmit_DMA(&huart1, &buff, strlen(buff));
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+	interruptFlag = 1;
+	HAL_UART_Receive_IT(&huart1, UART2_rxBuffer, 1);
+
+}
+
 /* USER CODE END 4 */
+
+/* USER CODE BEGIN Header_StartReceivingTerminal */
+/**
+  * @brief  Function implementing the receiveTerminal thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartReceivingTerminal */
+void StartReceivingTerminal(void const * argument)
+{
+  /* USER CODE BEGIN 5 */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+    if (interruptFlag == 1) {
+    	HAL_UART_Transmit(&huart1, UART2_rxBuffer, 1, 100);
+    	char* morse[1];
+    	morse[0] = morseBuffer;
+    	//convertMorseToText(array, ascii_char, 1);
+    	convertTextToMorse(UART2_rxBuffer, morse, 1);
+    	i = morse[0];
+    	//HAL_UART_Transmit(&huart1, morse, strlen(morse), 100);
+
+    	for(int x = 0; x < strlen(*(morse)); x++) {
+    		char m = (*(morse))[x];
+
+    		if(strcmp(m, '-') == 0) {
+    			HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
+    			osDelay(1500);
+    		} else if(strcmp(m, '.') == 0) {
+    			HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
+    			osDelay(700);
+    		}
+    		HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_RESET);
+    		osDelay(200);
+    	}
+    	interruptFlag = 0;
+    }
+  }
+  /* USER CODE END 5 */
+}
+
+/* USER CODE BEGIN Header_StartSideTask */
+/**
+* @brief Function implementing the sideTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartSideTask */
+void StartSideTask(void const * argument)
+{
+  /* USER CODE BEGIN StartSideTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1000);
+    char Message[] = "Write anything on Serial Terminal\r\n";
+    HAL_UART_Transmit(&huart1, (uint8_t *)Message, strlen(Message), 10);
+  }
+  /* USER CODE END StartSideTask */
+}
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM6 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM6) {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
+}
 
 /**
   * @brief  This function is executed in case of error occurrence.
