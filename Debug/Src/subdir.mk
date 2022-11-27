@@ -18,6 +18,7 @@ C_SRCS += \
 ../Src/stm32l4s5i_iot01_hsensor.c \
 ../Src/stm32l4s5i_iot01_magneto.c \
 ../Src/stm32l4s5i_iot01_psensor.c \
+../Src/stm32l4s5i_iot01_qspi.c \
 ../Src/stm32l4s5i_iot01_tsensor.c \
 ../Src/stm32l4xx_hal_msp.c \
 ../Src/stm32l4xx_hal_timebase_tim.c \
@@ -46,6 +47,7 @@ OBJS += \
 ./Src/stm32l4s5i_iot01_hsensor.o \
 ./Src/stm32l4s5i_iot01_magneto.o \
 ./Src/stm32l4s5i_iot01_psensor.o \
+./Src/stm32l4s5i_iot01_qspi.o \
 ./Src/stm32l4s5i_iot01_tsensor.o \
 ./Src/stm32l4xx_hal_msp.o \
 ./Src/stm32l4xx_hal_timebase_tim.o \
@@ -74,6 +76,7 @@ C_DEPS += \
 ./Src/stm32l4s5i_iot01_hsensor.d \
 ./Src/stm32l4s5i_iot01_magneto.d \
 ./Src/stm32l4s5i_iot01_psensor.d \
+./Src/stm32l4s5i_iot01_qspi.d \
 ./Src/stm32l4s5i_iot01_tsensor.d \
 ./Src/stm32l4xx_hal_msp.d \
 ./Src/stm32l4xx_hal_timebase_tim.d \
@@ -96,7 +99,7 @@ Src/%.o Src/%.su: ../Src/%.c Src/subdir.mk
 clean: clean-Src
 
 clean-Src:
-	-$(RM) ./Src/MorseConversionLayer.d ./Src/MorseConversionLayer.o ./Src/MorseConversionLayer.su ./Src/freertos.d ./Src/freertos.o ./Src/freertos.su ./Src/hts221.d ./Src/hts221.o ./Src/hts221.su ./Src/lis3mdl.d ./Src/lis3mdl.o ./Src/lis3mdl.su ./Src/lps22hb.d ./Src/lps22hb.o ./Src/lps22hb.su ./Src/lsm6dsl.d ./Src/lsm6dsl.o ./Src/lsm6dsl.su ./Src/main.d ./Src/main.o ./Src/main.su ./Src/stm32l4s5i_iot01.d ./Src/stm32l4s5i_iot01.o ./Src/stm32l4s5i_iot01.su ./Src/stm32l4s5i_iot01_accelero.d ./Src/stm32l4s5i_iot01_accelero.o ./Src/stm32l4s5i_iot01_accelero.su ./Src/stm32l4s5i_iot01_gyro.d ./Src/stm32l4s5i_iot01_gyro.o ./Src/stm32l4s5i_iot01_gyro.su ./Src/stm32l4s5i_iot01_hsensor.d ./Src/stm32l4s5i_iot01_hsensor.o ./Src/stm32l4s5i_iot01_hsensor.su ./Src/stm32l4s5i_iot01_magneto.d ./Src/stm32l4s5i_iot01_magneto.o ./Src/stm32l4s5i_iot01_magneto.su ./Src/stm32l4s5i_iot01_psensor.d ./Src/stm32l4s5i_iot01_psensor.o ./Src/stm32l4s5i_iot01_psensor.su ./Src/stm32l4s5i_iot01_tsensor.d ./Src/stm32l4s5i_iot01_tsensor.o ./Src/stm32l4s5i_iot01_tsensor.su ./Src/stm32l4xx_hal_msp.d ./Src/stm32l4xx_hal_msp.o ./Src/stm32l4xx_hal_msp.su ./Src/stm32l4xx_hal_timebase_tim.d ./Src/stm32l4xx_hal_timebase_tim.o ./Src/stm32l4xx_hal_timebase_tim.su ./Src/stm32l4xx_it.d ./Src/stm32l4xx_it.o ./Src/stm32l4xx_it.su ./Src/syscalls.d ./Src/syscalls.o ./Src/syscalls.su ./Src/sysmem.d ./Src/sysmem.o ./Src/sysmem.su ./Src/system_stm32l4xx.d ./Src/system_stm32l4xx.o ./Src/system_stm32l4xx.su ./Src/vl53l0x_api.d ./Src/vl53l0x_api.o ./Src/vl53l0x_api.su ./Src/vl53l0x_api_calibration.d ./Src/vl53l0x_api_calibration.o ./Src/vl53l0x_api_calibration.su ./Src/vl53l0x_api_core.d ./Src/vl53l0x_api_core.o ./Src/vl53l0x_api_core.su ./Src/vl53l0x_api_ranging.d ./Src/vl53l0x_api_ranging.o ./Src/vl53l0x_api_ranging.su ./Src/vl53l0x_api_strings.d ./Src/vl53l0x_api_strings.o ./Src/vl53l0x_api_strings.su ./Src/vl53l0x_platform.d ./Src/vl53l0x_platform.o ./Src/vl53l0x_platform.su
+	-$(RM) ./Src/MorseConversionLayer.d ./Src/MorseConversionLayer.o ./Src/MorseConversionLayer.su ./Src/freertos.d ./Src/freertos.o ./Src/freertos.su ./Src/hts221.d ./Src/hts221.o ./Src/hts221.su ./Src/lis3mdl.d ./Src/lis3mdl.o ./Src/lis3mdl.su ./Src/lps22hb.d ./Src/lps22hb.o ./Src/lps22hb.su ./Src/lsm6dsl.d ./Src/lsm6dsl.o ./Src/lsm6dsl.su ./Src/main.d ./Src/main.o ./Src/main.su ./Src/stm32l4s5i_iot01.d ./Src/stm32l4s5i_iot01.o ./Src/stm32l4s5i_iot01.su ./Src/stm32l4s5i_iot01_accelero.d ./Src/stm32l4s5i_iot01_accelero.o ./Src/stm32l4s5i_iot01_accelero.su ./Src/stm32l4s5i_iot01_gyro.d ./Src/stm32l4s5i_iot01_gyro.o ./Src/stm32l4s5i_iot01_gyro.su ./Src/stm32l4s5i_iot01_hsensor.d ./Src/stm32l4s5i_iot01_hsensor.o ./Src/stm32l4s5i_iot01_hsensor.su ./Src/stm32l4s5i_iot01_magneto.d ./Src/stm32l4s5i_iot01_magneto.o ./Src/stm32l4s5i_iot01_magneto.su ./Src/stm32l4s5i_iot01_psensor.d ./Src/stm32l4s5i_iot01_psensor.o ./Src/stm32l4s5i_iot01_psensor.su ./Src/stm32l4s5i_iot01_qspi.d ./Src/stm32l4s5i_iot01_qspi.o ./Src/stm32l4s5i_iot01_qspi.su ./Src/stm32l4s5i_iot01_tsensor.d ./Src/stm32l4s5i_iot01_tsensor.o ./Src/stm32l4s5i_iot01_tsensor.su ./Src/stm32l4xx_hal_msp.d ./Src/stm32l4xx_hal_msp.o ./Src/stm32l4xx_hal_msp.su ./Src/stm32l4xx_hal_timebase_tim.d ./Src/stm32l4xx_hal_timebase_tim.o ./Src/stm32l4xx_hal_timebase_tim.su ./Src/stm32l4xx_it.d ./Src/stm32l4xx_it.o ./Src/stm32l4xx_it.su ./Src/syscalls.d ./Src/syscalls.o ./Src/syscalls.su ./Src/sysmem.d ./Src/sysmem.o ./Src/sysmem.su ./Src/system_stm32l4xx.d ./Src/system_stm32l4xx.o ./Src/system_stm32l4xx.su ./Src/vl53l0x_api.d ./Src/vl53l0x_api.o ./Src/vl53l0x_api.su ./Src/vl53l0x_api_calibration.d ./Src/vl53l0x_api_calibration.o ./Src/vl53l0x_api_calibration.su ./Src/vl53l0x_api_core.d ./Src/vl53l0x_api_core.o ./Src/vl53l0x_api_core.su ./Src/vl53l0x_api_ranging.d ./Src/vl53l0x_api_ranging.o ./Src/vl53l0x_api_ranging.su ./Src/vl53l0x_api_strings.d ./Src/vl53l0x_api_strings.o ./Src/vl53l0x_api_strings.su ./Src/vl53l0x_platform.d ./Src/vl53l0x_platform.o ./Src/vl53l0x_platform.su
 
 .PHONY: clean-Src
 
