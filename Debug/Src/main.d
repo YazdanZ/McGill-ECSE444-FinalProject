@@ -55,7 +55,8 @@ Src/main.o: ../Src/main.c ../Inc/main.h \
  ../Inc/vl53l0x_api.h ../Inc/vl53l0x_api_strings.h ../Inc/vl53l0x_def.h \
  ../Inc/vl53l0x_device.h ../Inc/vl53l0x_types.h ../Inc/vl53l0x_platform.h \
  ../Inc/vl53l0x_platform_log.h ../Inc/vl53l0x_platform.h \
- ../Inc/MorseConversionLayer.h
+ ../Inc/MorseConversionLayer.h ../Src/stm32l4s5i_iot01_qspi.h \
+ ../Src/mx25r6435f.h
 ../Inc/main.h:
 ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal.h:
 ../Inc/stm32l4xx_hal_conf.h:
@@ -119,3 +120,5 @@ Src/main.o: ../Src/main.c ../Inc/main.h \
 ../Inc/vl53l0x_platform_log.h:
 ../Inc/vl53l0x_platform.h:
 ../Inc/MorseConversionLayer.h:
+../Src/stm32l4s5i_iot01_qspi.h:
+../Src/mx25r6435f.h:
