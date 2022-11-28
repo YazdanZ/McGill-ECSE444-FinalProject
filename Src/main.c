@@ -161,6 +161,11 @@ int main(void)
   MX_DAC1_Init();
   MX_OCTOSPI1_Init();
   /* USER CODE BEGIN 2 */
+  HAL_TIM_Base_Start(&htim2);
+  HAL_DMA_Init(&hdma_dac1_ch1);
+  HAL_DMA_Init(&hdma_dfsdm1_flt0);
+  HAL_DMA_Init(&hdma_tim2_up);
+  BSP_QSPI_Init();
   pMyDevice->I2cHandle = &hi2c2;
   pMyDevice->I2cDevAddr      = 0x52;
   pMyDevice->comms_type      =  1;
@@ -334,8 +339,8 @@ static void MX_DAC1_Init(void)
   /** DAC channel OUT1 config
   */
   sConfig.DAC_SampleAndHold = DAC_SAMPLEANDHOLD_DISABLE;
-  sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
-  sConfig.DAC_HighFrequency = DAC_HIGH_FREQUENCY_INTERFACE_MODE_ABOVE_80MHZ;
+  sConfig.DAC_Trigger = DAC_TRIGGER_T2_TRGO;
+  sConfig.DAC_HighFrequency = DAC_HIGH_FREQUENCY_INTERFACE_MODE_DISABLE;
   sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
   sConfig.DAC_ConnectOnChipPeripheral = DAC_CHIPCONNECT_DISABLE;
   sConfig.DAC_UserTrimming = DAC_TRIMMING_FACTORY;
@@ -471,7 +476,7 @@ static void MX_OCTOSPI1_Init(void)
   hospi1.Instance = OCTOSPI1;
   hospi1.Init.FifoThreshold = 1;
   hospi1.Init.DualQuad = HAL_OSPI_DUALQUAD_DISABLE;
-  hospi1.Init.MemoryType = HAL_OSPI_MEMTYPE_MICRON;
+  hospi1.Init.MemoryType = HAL_OSPI_MEMTYPE_MACRONIX;
   hospi1.Init.DeviceSize = 32;
   hospi1.Init.ChipSelectHighTime = 1;
   hospi1.Init.FreeRunningClock = HAL_OSPI_FREERUNCLK_DISABLE;
@@ -519,7 +524,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 4294967295;
+  htim2.Init.Period = 1814;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -531,7 +536,7 @@ static void MX_TIM2_Init(void)
   {
     Error_Handler();
   }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
   {
@@ -730,18 +735,18 @@ void HAL_GPIO_EXTI_Callback (uint16_t GPIO_Pin) {
 //    HAL_UART_Transmit_DMA(&huart1, &buff, strlen(buff));
 
 //
-	HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
-	HAL_DFSDM_FilterRegularStop_DMA(&hdfsdm1_filter0);
-	for (int i = 0; i < 50000 ; i++){
-		arrayOne[i] = (int32_t)0;
-	}
-	HAL_DFSDM_FilterRegularStart_DMA(&hdfsdm1_filter0, &arrayOne, 50000);
-
-	if(HAL_GPIO_ReadPin(GPIOB, LED_Pin) == GPIO_PIN_SET) {
-		HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_RESET);
-	} else {
-		HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
-	}
+//	HAL_DAC_Stop_DMA(&hdac1, DAC_CHANNEL_1);
+//	HAL_DFSDM_FilterRegularStop_DMA(&hdfsdm1_filter0);
+//	for (int i = 0; i < 50000 ; i++){
+//		arrayOne[i] = (int32_t)0;
+//	}
+//	HAL_DFSDM_FilterRegularStart_DMA(&hdfsdm1_filter0, &arrayOne, 50000);
+//
+//	if(HAL_GPIO_ReadPin(GPIOB, LED_Pin) == GPIO_PIN_SET) {
+//		HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_RESET);
+//	} else {
+//		HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
+//	}
 
 }
 
@@ -768,8 +773,8 @@ void HAL_DFSDM_FilterRegConvCpltCallback (DFSDM_Filter_HandleTypeDef * hdfsdm_fi
 	}
 
 
-	BSP_QSPI_Erase_Block(0x330000);
-	if (BSP_QSPI_Write(&forDac, 0x330000, 100000) != QSPI_OK) Error_Handler();
+//	BSP_QSPI_Erase_Block(0x330000);
+//	if (BSP_QSPI_Write(&forDac, 0x330000, 100000) != QSPI_OK) Error_Handler();
 
 //	if (BSP_QSPI_Read(&forDac, 0x210000, 100000) != 0) Error_Handler();
 //	HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
@@ -819,7 +824,7 @@ void StartReceivingTerminal(void const * argument)
     	}
 
     	// read out loud the passed letter to DAC
-    	char toRead = tolower(UART2_rxBuffer);
+    	char toRead = tolower(UART2_rxBuffer[0]);
 //    	int offset = toRead - 'a';
     	if (toRead == 'a'){
 			if (BSP_QSPI_Read(&forDac, 0x000000, 100000) != 0) Error_Handler();
