@@ -120,7 +120,7 @@ void HAL_DFSDM_FilterRegConvCpltCallback (DFSDM_Filter_HandleTypeDef * hdfsdm_fi
 
 uint8_t buff[1000];
 uint8_t rxData[4];
-uint8_t UART2_rxBuffer[1] = {0};
+uint8_t UART2_rxBuffer[1000] = {0};
 int flag = 0;
 
 /* USER CODE END 0 */
@@ -180,9 +180,10 @@ int main(void)
   status = VL53L0X_SetDeviceMode(pMyDevice, VL53L0X_DEVICEMODE_SINGLE_RANGING);
   char ascii_char[2]; // null-terminated string of length 1.
 
-  HAL_UART_Receive_IT(&huart1, UART2_rxBuffer, 1);
+  //HAL_UART_Receive_IT(&huart1, UART2_rxBuffer, 1);
 
-
+  char Message[] = "Write anything on Serial Terminal\r\n";
+  HAL_UART_Transmit(&huart1, (uint8_t *)Message, strlen(Message), 10);
 
   /* USER CODE END 2 */
 
@@ -204,11 +205,11 @@ int main(void)
 
   /* Create the thread(s) */
   /* definition and creation of receiveTerminal */
-  osThreadDef(receiveTerminal, StartReceivingTerminal, osPriorityNormal, 0, 128);
+  osThreadDef(receiveTerminal, StartReceivingTerminal, osPriorityNormal, 0, 256);
   receiveTerminalHandle = osThreadCreate(osThread(receiveTerminal), NULL);
 
   /* definition and creation of sideTask */
-  osThreadDef(sideTask, StartSideTask, osPriorityNormal, 0, 128);
+  osThreadDef(sideTask, StartSideTask, osPriorityNormal, 0, 256);
   sideTaskHandle = osThreadCreate(osThread(sideTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
@@ -226,14 +227,14 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	char* array[1];
-	read_char_morse();
-	array[0] = morse;
-	convertMorseToText(array, ascii_char, 1);
-	ascii_char[1]='\0';
-	snprintf(output, sizeof(output), "%s\n\r", ascii_char);
+//	char* array[1];
+//	read_char_morse();
+//	array[0] = morse;
+//	convertMorseToText(array, ascii_char, 1);
+//	ascii_char[1]='\0';
+	snprintf(output, sizeof(output), "hello\n\r", ascii_char);
 	HAL_UART_Transmit(&huart1, output, strlen(output), 100);
-	snprintf(output, sizeof(output), "%s\n\r", morse);
+	snprintf(output, sizeof(output), "hello\n\r", morse);
 	HAL_UART_Transmit(&huart1, output, strlen(output), 100);
 
 
@@ -707,7 +708,7 @@ void read_char_morse() // reads a single ascii character (multiple morse codes)
 		  } else if (distance_output<THRES_DISTANCE && mode==1) {
 			  counter++;
 		  }
-		  HAL_Delay(WAITTIME);
+		  osDelay(WAITTIME);
 	}
 
 
@@ -758,19 +759,19 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 //
 void HAL_DFSDM_FilterRegConvCpltCallback (DFSDM_Filter_HandleTypeDef * hdfsdm_filter) {
 
-	for (int i = 0; i < 50000 ; i++){
-
-		micValue = arrayOne[i];
-
-		int32_t temp = arrayOne[i] >> 8;
-//		if(temp < -30000) { temp = -30000; }
-//		else if(temp > 30000) { temp = 30000; }
-		temp = (temp/256)/*max here is 32768*/ + 32768; // total max is 65536 <= 2^16 for 16 bits.
-
-		forDac[i] = (uint16_t)((int16_t)(arrayOne[i] >> 8) + 32748);
-
-		//dacValue = (uint16_t) temp;
-	}
+//	for (int i = 0; i < 50000 ; i++){
+//
+//		micValue = arrayOne[i];
+//
+//		int32_t temp = arrayOne[i] >> 8;
+////		if(temp < -30000) { temp = -30000; }
+////		else if(temp > 30000) { temp = 30000; }
+//		temp = (temp/256)/*max here is 32768*/ + 32768; // total max is 65536 <= 2^16 for 16 bits.
+//
+//		forDac[i] = (uint16_t)((int16_t)(arrayOne[i] >> 8) + 32748);
+//
+//		//dacValue = (uint16_t) temp;
+//	}
 
 
 //	BSP_QSPI_Erase_Block(0x330000);
@@ -796,169 +797,183 @@ void HAL_DFSDM_FilterRegConvCpltCallback (DFSDM_Filter_HandleTypeDef * hdfsdm_fi
 void StartReceivingTerminal(void const * argument)
 {
   /* USER CODE BEGIN 5 */
+	char ascii_char[2];
+	int mode = 0;
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
-    if (interruptFlag == 1) {
-    	HAL_UART_Transmit(&huart1, UART2_rxBuffer, 1, 100);
-    	char* morse[1];
-    	morse[0] = morseBuffer;
-    	//convertMorseToText(array, ascii_char, 1);
-    	convertTextToMorse(UART2_rxBuffer, morse, 1);
-    	i = morse[0];
-    	//HAL_UART_Transmit(&huart1, morse, strlen(morse), 100);
-
-    	for(int x = 0; x < strlen(*(morse)); x++) {
-    		char m = (*(morse))[x];
-
-    		if(strcmp(m, '-') == 0) {
-    			HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
-    			osDelay(1500);
-    		} else if(strcmp(m, '.') == 0) {
-    			HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
-    			osDelay(700);
-    		}
-    		HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_RESET);
-    		osDelay(200);
-    	}
-
-    	// read out loud the passed letter to DAC
-    	char toRead = tolower(UART2_rxBuffer[0]);
-//    	int offset = toRead - 'a';
-    	if (toRead == 'a'){
-			if (BSP_QSPI_Read(&forDac, 0x000000, 100000) != 0) Error_Handler();
-			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-    	}
-    	if (toRead == 'b'){
-			if (BSP_QSPI_Read(&forDac, 0x020000, 100000) != 0) Error_Handler();
-			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-    	}
-    	if (toRead == 'c'){
-			if (BSP_QSPI_Read(&forDac, 0x040000, 100000) != 0) Error_Handler();
-			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-    	}
-    	if (toRead == 'd'){
-			if (BSP_QSPI_Read(&forDac, 0x060000, 100000) != 0) Error_Handler();
-			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-    	}
-    	if (toRead == 'e'){
-			if (BSP_QSPI_Read(&forDac, 0x080000, 100000) != 0) Error_Handler();
-			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-    	}
-    	if (toRead == 'f'){
-			if (BSP_QSPI_Read(&forDac, 0x0A0000, 100000) != 0) Error_Handler();
-			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-    	}
-    	if (toRead == 'g'){
-			if (BSP_QSPI_Read(&forDac, 0x0C0000, 100000) != 0) Error_Handler();
-			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-    	}
-    	if (toRead == 'h'){
-			if (BSP_QSPI_Read(&forDac, 0x0E0000, 100000) != 0) Error_Handler();
-			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-    	}
-    	if (toRead == 'i'){
-			if (BSP_QSPI_Read(&forDac, 0x100000, 100000) != 0) Error_Handler();
-			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-    	}
-    	if (toRead == 'j'){
-			if (BSP_QSPI_Read(&forDac, 0x120000, 100000) != 0) Error_Handler();
-			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-    	}
-    	if (toRead == 'k'){
-			if (BSP_QSPI_Read(&forDac, 0x140000, 100000) != 0) Error_Handler();
-			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-    	}
-    	if (toRead == 'l'){
-			if (BSP_QSPI_Read(&forDac, 0x160000, 100000) != 0) Error_Handler();
-			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-    	}
-    	if (toRead == 'm'){
-			if (BSP_QSPI_Read(&forDac, 0x180000, 100000) != 0) Error_Handler();
-			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-    	}
-    	if (toRead == 'n'){
-			if (BSP_QSPI_Read(&forDac, 0x1A0000, 100000) != 0) Error_Handler();
-			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-    	}
-    	if (toRead == 'o'){
-			if (BSP_QSPI_Read(&forDac, 0x1C0000, 100000) != 0) Error_Handler();
-			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-    	}
-    	if (toRead == 'p'){
-			if (BSP_QSPI_Read(&forDac, 0x1E0000, 100000) != 0) Error_Handler();
-			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-    	}
-    	if (toRead == 'q'){
-			if (BSP_QSPI_Read(&forDac, 0x210000, 100000) != 0) Error_Handler();
-			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-    	}
-    	if (toRead == 'r'){
-			if (BSP_QSPI_Read(&forDac, 0x330000, 100000) != 0) Error_Handler();
-			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-    	}
-    	if (toRead == 's'){
-			if (BSP_QSPI_Read(&forDac, 0x230000, 100000) != 0) Error_Handler();
-			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-    	}
-    	if (toRead == 't'){
-			if (BSP_QSPI_Read(&forDac, 0x250000, 100000) != 0) Error_Handler();
-			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-    	}
-    	if (toRead == 'u'){
-			if (BSP_QSPI_Read(&forDac, 0x270000, 100000) != 0) Error_Handler();
-			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-    	}
-    	if (toRead == 'v'){
-			if (BSP_QSPI_Read(&forDac, 0x290000, 100000) != 0) Error_Handler();
-			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-    	}
-       	if (toRead == 'w'){
-    			if (BSP_QSPI_Read(&forDac, 0x2B0000, 100000) != 0) Error_Handler();
-    			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-		}
-       	if (toRead == 'x'){
-    			if (BSP_QSPI_Read(&forDac, 0x2D0000, 100000) != 0) Error_Handler();
-    			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-		}
-       	if (toRead == 'y'){
-    			if (BSP_QSPI_Read(&forDac, 0x2F0000, 100000) != 0) Error_Handler();
-    			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-		}
-       	if (toRead == 'z'){
-    			if (BSP_QSPI_Read(&forDac, 0x310000, 100000) != 0) Error_Handler();
-    			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
-
-		}
+	  	osDelay(1000);
+//	  	char* array[1];
+//		read_char_morse();
+//		array[0] = morse;
+//		convertMorseToText(array, ascii_char, 1);
+//		ascii_char[1]='\0';
+		snprintf(output, sizeof(output), "hello\n\r");
+		HAL_UART_Transmit(&huart1, output, strlen(output), 100);
+		snprintf(output, sizeof(output), "hello\n\r");
+		HAL_UART_Transmit(&huart1, output, strlen(output), 100);
 
 
-    	interruptFlag = 0;
-    }
+//    osDelay(1);
+//    if (interruptFlag == 1) {
+//    	HAL_UART_Transmit(&huart1, UART2_rxBuffer, 1, 100);
+//    	char* morse[1];
+//    	morse[0] = morseBuffer;
+//    	//convertMorseToText(array, ascii_char, 1);
+//    	convertTextToMorse(UART2_rxBuffer, morse, 1);
+//    	i = morse[0];
+//    	//HAL_UART_Transmit(&huart1, morse, strlen(morse), 100);
+//
+//    	for(int x = 0; x < strlen(*(morse)); x++) {
+//    		char m = (*(morse))[x];
+//
+//    		if(strcmp(m, '-') == 0) {
+//    			HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
+//    			osDelay(1500);
+//    		} else if(strcmp(m, '.') == 0) {
+//    			HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_SET);
+//    			osDelay(700);
+//    		}
+//    		HAL_GPIO_WritePin(GPIOB, LED_Pin, GPIO_PIN_RESET);
+//    		osDelay(200);
+//    	}
+//
+//    	// read out loud the passed letter to DAC
+//    	char toRead = tolower(UART2_rxBuffer[0]);
+////    	int offset = toRead - 'a';
+//    	if (toRead == 'a'){
+//			if (BSP_QSPI_Read(&forDac, 0x000000, 100000) != 0) Error_Handler();
+//			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//    	}
+//    	if (toRead == 'b'){
+//			if (BSP_QSPI_Read(&forDac, 0x020000, 100000) != 0) Error_Handler();
+//			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//    	}
+//    	if (toRead == 'c'){
+//			if (BSP_QSPI_Read(&forDac, 0x040000, 100000) != 0) Error_Handler();
+//			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//    	}
+//    	if (toRead == 'd'){
+//			if (BSP_QSPI_Read(&forDac, 0x060000, 100000) != 0) Error_Handler();
+//			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//    	}
+//    	if (toRead == 'e'){
+//			if (BSP_QSPI_Read(&forDac, 0x080000, 100000) != 0) Error_Handler();
+//			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//    	}
+//    	if (toRead == 'f'){
+//			if (BSP_QSPI_Read(&forDac, 0x0A0000, 100000) != 0) Error_Handler();
+//			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//    	}
+//    	if (toRead == 'g'){
+//			if (BSP_QSPI_Read(&forDac, 0x0C0000, 100000) != 0) Error_Handler();
+//			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//    	}
+//    	if (toRead == 'h'){
+//			if (BSP_QSPI_Read(&forDac, 0x0E0000, 100000) != 0) Error_Handler();
+//			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//    	}
+//    	if (toRead == 'i'){
+//			if (BSP_QSPI_Read(&forDac, 0x100000, 100000) != 0) Error_Handler();
+//			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//    	}
+//    	if (toRead == 'j'){
+//			if (BSP_QSPI_Read(&forDac, 0x120000, 100000) != 0) Error_Handler();
+//			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//    	}
+//    	if (toRead == 'k'){
+//			if (BSP_QSPI_Read(&forDac, 0x140000, 100000) != 0) Error_Handler();
+//			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//    	}
+//    	if (toRead == 'l'){
+//			if (BSP_QSPI_Read(&forDac, 0x160000, 100000) != 0) Error_Handler();
+//			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//    	}
+//    	if (toRead == 'm'){
+//			if (BSP_QSPI_Read(&forDac, 0x180000, 100000) != 0) Error_Handler();
+//			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//    	}
+//    	if (toRead == 'n'){
+//			if (BSP_QSPI_Read(&forDac, 0x1A0000, 100000) != 0) Error_Handler();
+//			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//    	}
+//    	if (toRead == 'o'){
+//			if (BSP_QSPI_Read(&forDac, 0x1C0000, 100000) != 0) Error_Handler();
+//			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//    	}
+//    	if (toRead == 'p'){
+//			if (BSP_QSPI_Read(&forDac, 0x1E0000, 100000) != 0) Error_Handler();
+//			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//    	}
+//    	if (toRead == 'q'){
+//			if (BSP_QSPI_Read(&forDac, 0x210000, 100000) != 0) Error_Handler();
+//			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//    	}
+//    	if (toRead == 'r'){
+//			if (BSP_QSPI_Read(&forDac, 0x330000, 100000) != 0) Error_Handler();
+//			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//    	}
+//    	if (toRead == 's'){
+//			if (BSP_QSPI_Read(&forDac, 0x230000, 100000) != 0) Error_Handler();
+//			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//    	}
+//    	if (toRead == 't'){
+//			if (BSP_QSPI_Read(&forDac, 0x250000, 100000) != 0) Error_Handler();
+//			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//    	}
+//    	if (toRead == 'u'){
+//			if (BSP_QSPI_Read(&forDac, 0x270000, 100000) != 0) Error_Handler();
+//			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//    	}
+//    	if (toRead == 'v'){
+//			if (BSP_QSPI_Read(&forDac, 0x290000, 100000) != 0) Error_Handler();
+//			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//    	}
+//       	if (toRead == 'w'){
+//    			if (BSP_QSPI_Read(&forDac, 0x2B0000, 100000) != 0) Error_Handler();
+//    			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//		}
+//       	if (toRead == 'x'){
+//    			if (BSP_QSPI_Read(&forDac, 0x2D0000, 100000) != 0) Error_Handler();
+//    			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//		}
+//       	if (toRead == 'y'){
+//    			if (BSP_QSPI_Read(&forDac, 0x2F0000, 100000) != 0) Error_Handler();
+//    			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//		}
+//       	if (toRead == 'z'){
+//    			if (BSP_QSPI_Read(&forDac, 0x310000, 100000) != 0) Error_Handler();
+//    			HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, &forDac, 100000, DAC_ALIGN_12B_R);
+//
+//		}
+//
+//
+//    	interruptFlag = 0;
+//    }
   }
   /* USER CODE END 5 */
 }
@@ -985,7 +1000,7 @@ void StartSideTask(void const * argument)
 
 /**
   * @brief  Period elapsed callback in non blocking mode
-  * @note   This function is called  when TIM6 interrupt took place, inside
+  * @note   This function is called  when TIM7 interrupt took place, inside
   * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
   * a global variable "uwTick" used as application time base.
   * @param  htim : TIM handle
@@ -996,7 +1011,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 0 */
 
   /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM6) {
+  if (htim->Instance == TIM7) {
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
@@ -1015,6 +1030,7 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
+	  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
   }
   /* USER CODE END Error_Handler_Debug */
 }

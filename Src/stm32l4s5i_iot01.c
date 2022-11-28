@@ -622,7 +622,7 @@ HAL_StatusTypeDef SENSOR_IO_IsDeviceReady(uint16_t DevAddress, uint32_t Trials)
   */
 void SENSOR_IO_Delay(uint32_t Delay)
 {
-  HAL_Delay(Delay);
+  osDelay(Delay);
 }
 
 /******************************** LINK NFC ********************************/
