@@ -227,36 +227,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-//	char* array[1];
-//	read_char_morse();
-//	array[0] = morse;
-//	convertMorseToText(array, ascii_char, 1);
-//	ascii_char[1]='\0';
-//	snprintf(output, sizeof(output), "hello\n\r", ascii_char);
-//	HAL_UART_Transmit(&huart1, output, strlen(output), 100);
-//	snprintf(output, sizeof(output), "hello\n\r", morse);
-//	HAL_UART_Transmit(&huart1, output, strlen(output), 100);
-
-
-
-//	  status = VL53L0X_PerformSingleRangingMeasurement(pMyDevice, &rangeData);
-//	  distance_output = pRangeData->RangeMilliMeter;
-//	  if (distance_output>THRES_DISTANCE && mode==1)
-//	  {
-//		  mode = 0;
-//	  snprintf(output, sizeof(output), "time: %d\n", counter);
-//	  HAL_UART_Transmit(&huart1, output, strlen(output), 100);
-//		  counter = 0;
-//	  } else  if (distance_output<THRES_DISTANCE && mode==0) {
-//		  counter++;
-//
-//		  mode = 1;
-//	  } else if (distance_output<THRES_DISTANCE) {
-//		  counter++;
-//	  }
-//	  //snprintf(output, sizeof(output), "Distance: %d\n", distance_output);
-//
-//	  HAL_Delay(WAITTIME);
   }
   /* USER CODE END 3 */
 }
