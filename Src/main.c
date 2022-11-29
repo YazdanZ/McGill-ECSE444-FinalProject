@@ -232,10 +232,10 @@ int main(void)
 //	array[0] = morse;
 //	convertMorseToText(array, ascii_char, 1);
 //	ascii_char[1]='\0';
-	snprintf(output, sizeof(output), "hello\n\r", ascii_char);
-	HAL_UART_Transmit(&huart1, output, strlen(output), 100);
-	snprintf(output, sizeof(output), "hello\n\r", morse);
-	HAL_UART_Transmit(&huart1, output, strlen(output), 100);
+//	snprintf(output, sizeof(output), "hello\n\r", ascii_char);
+//	HAL_UART_Transmit(&huart1, output, strlen(output), 100);
+//	snprintf(output, sizeof(output), "hello\n\r", morse);
+//	HAL_UART_Transmit(&huart1, output, strlen(output), 100);
 
 
 
@@ -686,6 +686,8 @@ void read_char_morse() // reads a single ascii character (multiple morse codes)
 	{
 		  status = VL53L0X_PerformSingleRangingMeasurement(pMyDevice, &rangeData);
 		  distance_output = pRangeData->RangeMilliMeter;
+		  //snprintf(output, sizeof(output), "%d\n\r", distance_output);
+		  //HAL_UART_Transmit(&huart1, output, strlen(output), 100);
 		  if (distance_output>THRES_DISTANCE)
 		  {
 			  if (mode==1){
@@ -708,6 +710,7 @@ void read_char_morse() // reads a single ascii character (multiple morse codes)
 		  } else if (distance_output<THRES_DISTANCE && mode==1) {
 			  counter++;
 		  }
+
 		  osDelay(WAITTIME);
 	}
 
@@ -798,19 +801,18 @@ void StartReceivingTerminal(void const * argument)
 {
   /* USER CODE BEGIN 5 */
 	char ascii_char[2];
-	int mode = 0;
   /* Infinite loop */
   for(;;)
   {
 	  	osDelay(1000);
-//	  	char* array[1];
-//		read_char_morse();
-//		array[0] = morse;
-//		convertMorseToText(array, ascii_char, 1);
-//		ascii_char[1]='\0';
-		snprintf(output, sizeof(output), "hello\n\r");
+	  	char* array[1];
+		read_char_morse();
+		array[0] = morse;
+		convertMorseToText(array, ascii_char, 1);
+		ascii_char[1]='\0';
+		snprintf(output, sizeof(output), "%s\n\r", ascii_char);
 		HAL_UART_Transmit(&huart1, output, strlen(output), 100);
-		snprintf(output, sizeof(output), "hello\n\r");
+		snprintf(output, sizeof(output), "%s\n\r", morse);
 		HAL_UART_Transmit(&huart1, output, strlen(output), 100);
 
 
