@@ -14,6 +14,6 @@
 ../Src/main.c:757:6:HAL_UART_RxCpltCallback	16	static
 ../Src/main.c:763:6:HAL_DFSDM_FilterRegConvCpltCallback	16	static
 ../Src/main.c:800:6:StartReceivingTerminal	24	static
-../Src/main.c:990:6:StartSideTask	64	static
-../Src/main.c:1011:6:HAL_TIM_PeriodElapsedCallback	16	static
-../Src/main.c:1028:6:Error_Handler	8	static,ignoring_inline_asm
+../Src/main.c:831:6:StartSideTask	40	static
+../Src/main.c:1013:6:HAL_TIM_PeriodElapsedCallback	16	static
+../Src/main.c:1030:6:Error_Handler	8	static,ignoring_inline_asm
