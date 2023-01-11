@@ -11,3 +11,7 @@ The project is a morse code education system, consisting of a contact-less input
 <p align="center">
 <img src="https://github.com/YazdanZ/McGill-ECSE444-FinalProject/blob/main/Components/arch.jpg" width="446" alt="design"> <img src="https://github.com/YazdanZ/McGill-ECSE444-FinalProject/blob/main/Components/terminal.jpg" width="296" alt="terminal">
 </p>
+
+## Final Report
+
+The final report of the implementation can be found [here](https://github.com/YazdanZ/McGill-ECSE444-FinalProject/raw/main/Components/Final%20project%20-%20Final%20report%20-%20ECSE%20444%20-%20Group%209.pdf "Final Report").
